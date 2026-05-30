@@ -14,6 +14,8 @@ Current implementation state:
 - story context persists in local project state
 - commit, promote, deploy, test, and ai flows are wired through mock clients
 - production deploys require explicit approval via `--approve`
+- GitHub Actions CI validates type-check, build, and tests on push and pull request
+- Vitest covers the deployment guardrail and story context flow
 - live Copado API clients are not wired yet
 
 ## Current Scope
@@ -44,6 +46,12 @@ npm install
 npm run build
 ```
 
+### Test
+
+```bash
+npm test
+```
+
 ### Run
 
 ```bash
@@ -67,6 +75,26 @@ node dist/index.js deploy --env PROD --approve
 
 - `.copado-hx.json` stores non-secret project configuration such as runtime mode
 - `.copado-hx.state.json` stores local workflow context such as the active story
+
+## Continuous Integration
+
+The repository includes a GitHub Actions workflow at `.github/workflows/ci.yml`.
+
+It runs on pushes to `main` and on pull requests, and currently validates:
+
+- dependency installation with `npm ci`
+- TypeScript type-checking with `npm run check`
+- CLI build with `npm run build`
+- unit tests with `npm test`
+
+This gives the project a real DevOps feedback loop even while the Copado integrations are still mocked.
+
+## Test Coverage
+
+The current Vitest suite focuses on two high-value checks:
+
+- the production deployment guardrail blocks unapproved `PROD` deploys
+- the story context service can list mock stories and persist the active story between commands
 
 ### Live Mode Note
 
