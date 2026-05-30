@@ -16,6 +16,7 @@ Current implementation state:
 - production deploys require explicit approval via `--approve`
 - GitHub Actions CI validates type-check, build, and tests on push and pull request
 - Vitest covers the deployment guardrail and story context flow
+- Track B is partially implemented through a project skill at `.github/skills/copado-headless/SKILL.md`
 - live Copado API clients are not wired yet
 
 ## Current Scope
@@ -347,7 +348,18 @@ These guardrails are essential for both safety and judging quality:
 
 ## Track B Strategy
 
-Once the CLI is stable, we add `SKILL.md` so an IDE agent can chain commands safely.
+The repository now includes an initial Track B skill at `.github/skills/copado-headless/SKILL.md` so an IDE agent can start chaining CLI commands safely.
+
+Current Track B coverage:
+
+- command discovery for the current `copado-hx` workflow
+- a safe default procedure based on `status`, story context, and explicit command sequencing
+- guardrails for production approval, ID handling, and mock-mode expectations
+
+Next Track B work:
+
+- expand the skill as live Copado clients are added
+- add an onboarding skill for real Copado API configuration once the API contract is available
 
 The `SKILL.md` should teach the agent:
 
@@ -385,8 +397,9 @@ This turns the CLI into an agent-compatible operating surface without giving the
 
 ### Phase 5: Agentic Workflow
 
-- add `SKILL.md`
+- expand `SKILL.md`
 - document safe workflow chains for IDE agents
+- add a live API onboarding skill once Copado integration details are available
 
 ## Assumptions To Confirm Before Implementation
 
