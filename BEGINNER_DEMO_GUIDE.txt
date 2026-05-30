@@ -1,0 +1,534 @@
+Copado Headless Agent - Beginner Demo Guide
+
+This guide explains the project in very simple language.
+It is written for someone who is new to development.
+You can use this to explain the project to your colleagues during a demo.
+
+--------------------------------------------------
+1. What this project is
+--------------------------------------------------
+
+This project is a command-line tool.
+
+Simple meaning:
+- You do not click buttons in a website.
+- You type commands in the terminal.
+- The tool performs DevOps steps for you.
+
+The goal of this project is to help a developer do the full Copado workflow without opening the Copado UI in a browser.
+
+That means a developer should be able to do things like:
+- choose a user story
+- commit work
+- promote to another environment
+- run tests
+- deploy to production
+- ask AI agents for help
+
+Right now this project is in practice mode.
+In the code, this is called mock mode.
+
+That means:
+- the commands work
+- the workflow is real
+- but the actual Copado APIs are not connected yet
+- the project uses fake demo responses for now
+
+So think of this as a training version of the real tool.
+
+--------------------------------------------------
+2. Very simple analogy
+--------------------------------------------------
+
+Imagine a school office.
+
+- You are the student.
+- The CLI tool is the office counter.
+- A story is your task card.
+- Commit means save your work.
+- Promote means send it to the next stage.
+- Test means check whether it works correctly.
+- Deploy means publish the final result.
+- AI means ask a smart helper for guidance.
+
+So this whole project is like a small office robot that takes your command and moves your work step by step.
+
+--------------------------------------------------
+3. The main idea of the code
+--------------------------------------------------
+
+The project follows this chain:
+
+User command -> command file -> service file -> client file -> result -> output
+
+Simple meaning:
+
+- command file understands what the user typed
+- service file decides what work must happen
+- client file talks to Copado or, for now, returns fake demo data
+- output file prints the answer nicely
+
+This is the most important thing to understand in the whole codebase.
+
+--------------------------------------------------
+4. Important folders in simple words
+--------------------------------------------------
+
+src/index.ts
+- This is the main starting point.
+- The app begins here.
+- It connects all other parts together.
+
+src/commands
+- These files listen to terminal commands.
+- Example: story, auth, commit, test, deploy, ai.
+- They are like a receptionist who hears what the user asked.
+
+src/services
+- These files contain the real logic.
+- They decide what should happen step by step.
+- They are like the brain of the app.
+
+src/clients
+- These files are the connection to outside systems.
+- Right now they return fake data.
+- Later they will call real Copado APIs.
+- They are like messengers.
+
+src/state
+- These files save and load local information.
+- They help the tool remember things.
+- Example: which story is currently selected.
+
+src/policies
+- These files contain safety rules.
+- Example: do not deploy to PROD without approval.
+
+src/output
+- These files print success and error messages.
+
+src/types
+- These files define common data shapes used across the project.
+
+README.md
+- This explains the architecture and project idea.
+
+package.json
+- This is the control file of the project.
+- It tells npm how to build and run the project.
+
+tsconfig.json
+- This tells TypeScript how to compile the code.
+
+.copado-hx.json
+- This stores project settings.
+- Example: mock mode or live mode.
+
+.copado-hx.state.json
+- This stores temporary workflow state.
+- Example: current selected story.
+
+dist
+- This contains the compiled JavaScript files.
+- These are the files Node.js actually runs.
+
+--------------------------------------------------
+5. What happens when the app starts
+--------------------------------------------------
+
+When the tool starts:
+
+1. src/index.ts runs first.
+2. It creates the main services.
+3. It registers all commands.
+4. It waits for the user to type a command.
+5. It sends the command to the correct file.
+
+So src/index.ts is like the main gate of the application.
+
+--------------------------------------------------
+6. Example workflow 1 - auth login
+--------------------------------------------------
+
+Command:
+
+node dist/index.js auth login --mode mock
+
+Simple meaning:
+
+"Start the tool in practice mode."
+
+What happens inside:
+
+1. src/index.ts receives the command.
+2. src/commands/auth.ts understands it is an auth command.
+3. That file calls src/services/auth-service.ts.
+4. The auth service saves the mode into .copado-hx.json using the config store.
+
+Important point:
+
+This is not real login yet.
+It does not contact Copado.
+It only stores settings.
+
+You can also check the current settings with:
+
+node dist/index.js auth status
+
+--------------------------------------------------
+7. Example workflow 2 - story list
+--------------------------------------------------
+
+Command:
+
+node dist/index.js story list
+
+Simple meaning:
+
+"Show me the available work items."
+
+What happens inside:
+
+1. src/commands/story.ts receives the command.
+2. It calls src/services/story-context-service.ts.
+3. That service checks the current mode.
+4. Since we are in mock mode, it returns fake stories from a built-in mock story list.
+
+Important point:
+
+Right now the story list is not coming from Copado.
+It is coming from the MOCK_STORIES array inside the story service.
+
+--------------------------------------------------
+8. Example workflow 3 - story set
+--------------------------------------------------
+
+Command:
+
+node dist/index.js story set --id US-1234
+
+Simple meaning:
+
+"I want to work on story US-1234."
+
+What happens inside:
+
+1. src/commands/story.ts reads the story ID.
+2. It calls setCurrentStory in src/services/story-context-service.ts.
+3. The service checks whether US-1234 exists in the mock story list.
+4. If it exists, the service writes that ID into .copado-hx.state.json.
+
+Why this matters:
+
+Now the tool remembers your current story.
+This helps later commands like commit, promote, and deploy.
+
+You can verify the current story with:
+
+node dist/index.js story current
+
+--------------------------------------------------
+9. Example workflow 4 - commit
+--------------------------------------------------
+
+Command:
+
+node dist/index.js commit --message "feat: scoring updates"
+
+Simple meaning:
+
+"Save my work for the current story."
+
+What happens inside:
+
+1. src/commands/pipeline.ts receives the command.
+2. It calls src/services/pipeline-service.ts.
+3. The pipeline service checks whether a story is already selected.
+4. If no story is selected, it throws an error.
+5. If a story is selected, it calls src/clients/cicd-client.ts.
+6. The mock CI/CD client returns a fake success result with a fake operation ID.
+
+Simple chain:
+
+command -> pipeline service -> mock CI/CD client -> success output
+
+Important point:
+
+This is where real Copado commit API calls will be added later.
+
+--------------------------------------------------
+10. Example workflow 5 - promote
+--------------------------------------------------
+
+Command:
+
+node dist/index.js promote --env UAT --validate
+
+Simple meaning:
+
+"Move my story to UAT and validate it."
+
+What happens inside:
+
+1. src/commands/pipeline.ts receives the command.
+2. It calls src/services/pipeline-service.ts.
+3. The service checks that an active story is available.
+4. The service calls the mock promote method in src/clients/cicd-client.ts.
+5. The service stores UAT as the last promotion environment in .copado-hx.state.json.
+
+Why this is useful:
+
+The tool remembers where your story was last promoted.
+
+--------------------------------------------------
+11. Example workflow 6 - test run
+--------------------------------------------------
+
+Command:
+
+node dist/index.js test run --suite smoke
+
+Simple meaning:
+
+"Run the smoke test suite."
+
+What happens inside:
+
+1. src/commands/testing.ts receives the command.
+2. It calls src/services/testing-service.ts.
+3. The service checks that we are in mock mode.
+4. It calls src/clients/crt-client.ts.
+5. The mock CRT client creates a fake execution ID.
+
+Now you can check the test status:
+
+node dist/index.js test status --execution EX-123
+
+And then see results:
+
+node dist/index.js test results --execution EX-123
+
+Current mock behavior:
+
+- status says the execution passed
+- results return passed and failed counts using fake demo numbers
+
+--------------------------------------------------
+12. Example workflow 7 - deploy
+--------------------------------------------------
+
+Command without approval:
+
+node dist/index.js deploy --env PROD
+
+Simple meaning:
+
+"Deploy to production."
+
+What happens inside:
+
+1. src/commands/pipeline.ts receives the command.
+2. It calls src/services/pipeline-service.ts.
+3. Before deployment, the service checks the safety rule in src/policies/deployment-policy.ts.
+4. That rule calls src/policies/approval-policy.ts.
+5. Because the environment is PROD, approval is required.
+6. Since approval was not given, the tool stops and shows an error.
+
+This is a safety feature.
+
+Approved command:
+
+node dist/index.js deploy --env PROD --approve
+
+Now what happens:
+
+1. The approval rule passes.
+2. The pipeline service calls the mock deploy method in src/clients/cicd-client.ts.
+3. The last deployment environment is stored in .copado-hx.state.json.
+
+Important point:
+
+This is one of the best guardrails in the project because production deployment is protected.
+
+--------------------------------------------------
+13. Example workflow 8 - AI ask
+--------------------------------------------------
+
+Command:
+
+node dist/index.js ai ask --agent plan "summarize the story"
+
+Simple meaning:
+
+"Ask the planning AI agent for help."
+
+What happens inside:
+
+1. src/commands/ai.ts receives the command.
+2. It checks that the agent name is valid.
+3. It calls src/services/ai-agent-service.ts.
+4. The AI service reads the current story from .copado-hx.state.json.
+5. It calls src/clients/ai-client.ts.
+6. The mock AI client returns a fake answer.
+
+Important point:
+
+If a story is selected, the AI response can include that story ID as context.
+
+--------------------------------------------------
+14. Example workflow 9 - status
+--------------------------------------------------
+
+Command:
+
+node dist/index.js status
+
+Simple meaning:
+
+"Show me the current condition of the tool."
+
+What happens inside:
+
+1. src/index.ts directly handles this command.
+2. It reads .copado-hx.json.
+3. It reads .copado-hx.state.json.
+4. It prints the current settings and saved context.
+
+This command is useful because it shows:
+
+- current mode
+- base URL if any
+- token environment variable if any
+- current active story
+- last promotion environment
+- last deployment environment
+
+--------------------------------------------------
+15. One full example from start to end
+--------------------------------------------------
+
+Let us say we want to work on story US-1234.
+
+Step 1:
+node dist/index.js auth login --mode mock
+
+Meaning:
+- start practice mode
+
+Step 2:
+node dist/index.js story list
+
+Meaning:
+- show all available stories
+
+Step 3:
+node dist/index.js story set --id US-1234
+
+Meaning:
+- choose US-1234 as the active story
+
+Step 4:
+node dist/index.js commit --message "feat: scoring updates"
+
+Meaning:
+- save work for that story
+
+Step 5:
+node dist/index.js promote --env UAT --validate
+
+Meaning:
+- move the work to UAT and validate it
+
+Step 6:
+node dist/index.js test run --suite smoke
+
+Meaning:
+- run tests
+
+Step 7:
+node dist/index.js test status --execution EX-123
+
+Meaning:
+- check whether testing finished
+
+Step 8:
+node dist/index.js test results --execution EX-123
+
+Meaning:
+- see the final testing result
+
+Step 9:
+node dist/index.js ai ask --agent release "generate release notes"
+
+Meaning:
+- ask AI for release help
+
+Step 10:
+node dist/index.js deploy --env PROD --approve
+
+Meaning:
+- deploy to production with approval
+
+This is the full headless DevOps flow the project wants to support.
+
+--------------------------------------------------
+16. What is real and what is not real yet
+--------------------------------------------------
+
+What works now:
+
+- the CLI runs
+- the code builds successfully
+- commands are available
+- local story selection works
+- local state is saved
+- mock commit, promote, deploy, test, and ai workflows work
+- production approval rule works
+
+What is not finished yet:
+
+- real Copado authentication
+- real Copado story APIs
+- real CI/CD API calls
+- real CRT test API calls
+- real AI API calls
+- secure token storage in system keychain
+
+So right now this project is best understood as:
+
+- a strong CLI skeleton
+- a clean architecture
+- a safe workflow design
+- a mock demo version of the future real product
+
+--------------------------------------------------
+17. Best way to explain this in a live demo
+--------------------------------------------------
+
+You can explain the tool in one line like this:
+
+"This project is a browser-free Copado DevOps assistant that lets a developer work from terminal using commands instead of opening the Copado UI."
+
+Then explain the 4 main ideas:
+
+1. The user types a command.
+2. A command file understands it.
+3. A service file decides the workflow.
+4. A client file returns data, which is mocked today and will call Copado later.
+
+Then show one simple flow:
+
+1. story list
+2. story set --id US-1234
+3. commit --message "feat: scoring updates"
+4. promote --env UAT --validate
+5. test run --suite smoke
+6. deploy --env PROD --approve
+
+That is enough for most people to understand the whole system.
+
+--------------------------------------------------
+18. Final one-line summary
+--------------------------------------------------
+
+This project is a beginner-friendly command-line skeleton for a future Copado headless DevOps tool, where commands go through a clean chain of command -> service -> client, with local state and safety rules already working in mock mode.

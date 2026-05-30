@@ -1,0 +1,27 @@
+{
+  "name": "copado-headless-agent",
+  "version": "0.1.0",
+  "description": "Headless Copado DevOps CLI scaffold for the Copado Hackathon",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "copado-hx": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "check": "tsc --noEmit -p tsconfig.json",
+    "dev": "tsx src/index.ts",
+    "start": "node dist/index.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "commander": "^12.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.30",
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3"
+  }
+}

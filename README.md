@@ -6,7 +6,76 @@ The goal is to let a developer complete the Copado delivery lifecycle without op
 
 ## Status
 
-This repository is currently in the architecture and planning phase.
+This repository now contains an initial TypeScript CLI scaffold.
+
+Current implementation state:
+
+- mock-mode CLI is runnable locally
+- story context persists in local project state
+- commit, promote, deploy, test, and ai flows are wired through mock clients
+- production deploys require explicit approval via `--approve`
+- live Copado API clients are not wired yet
+
+## Current Scope
+
+The current codebase is intentionally split into two phases:
+
+- Phase 1: a working headless CLI shell with policy enforcement, local state, and mock integrations
+- Phase 2: real Copado API clients for CI/CD, CRT, and AI
+
+This keeps the command surface stable while we replace mock adapters with real API integrations.
+
+## Quick Start
+
+### Prerequisites
+
+- Node.js 20 or later
+- npm 10 or later
+
+### Install
+
+```bash
+npm install
+```
+
+### Build
+
+```bash
+npm run build
+```
+
+### Run
+
+```bash
+node dist/index.js --help
+```
+
+### Example Mock Flow
+
+```bash
+node dist/index.js auth status
+node dist/index.js story list
+node dist/index.js story set --id US-1234
+node dist/index.js commit --message "feat: scoring updates"
+node dist/index.js promote --env UAT --validate
+node dist/index.js test run --suite smoke
+node dist/index.js ai ask --agent plan "summarize the story"
+node dist/index.js deploy --env PROD --approve
+```
+
+### Local State
+
+- `.copado-hx.json` stores non-secret project configuration such as runtime mode
+- `.copado-hx.state.json` stores local workflow context such as the active story
+
+### Live Mode Note
+
+The CLI already supports a `live` runtime setting in the config model, but the real Copado HTTP clients are not implemented yet.
+
+That means today:
+
+- `mock` mode works end to end for local demos and workflow design
+- `live` mode is a placeholder that preserves the final architecture while the API layer is being built
 
 ## Problem We Are Solving
 
