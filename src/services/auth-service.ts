@@ -1,20 +1,27 @@
 import { ConfigStore } from "../state/config-store.js";
 import { TokenStore } from "../state/token-store.js";
 import { CliError } from "../types/commands.js";
-import { ProjectConfig, RuntimeMode } from "../types/api.js";
+import {
+  COPADO_SERVICES,
+  CopadoServiceName,
+  ProjectConfig,
+  RuntimeMode,
+  ServiceStatus,
+} from "../types/api.js";
 
 export interface LoginOptions {
   runtimeMode: RuntimeMode;
-  apiBaseUrl?: string;
+  service?: CopadoServiceName;
+  activeProfile?: string;
+  baseUrl?: string;
   tokenEnvVar?: string;
 }
 
 export interface AuthStatus {
   configured: boolean;
   runtimeMode: RuntimeMode;
-  apiBaseUrl?: string;
-  tokenEnvVar?: string;
-  tokenPresent: boolean;
+  activeProfile?: string;
+  services: ServiceStatus[];
 }
 
 export class AuthService {
@@ -25,17 +32,38 @@ export class AuthService {
   }
 
   async login(options: LoginOptions): Promise<AuthStatus> {
-    if (options.runtimeMode === "live" && !options.apiBaseUrl) {
+    if (options.runtimeMode === "live" && !options.service) {
+      throw new CliError("Live mode requires --service <cicd|ai|crt>.", 2);
+    }
+
+    if (options.runtimeMode === "live" && !options.baseUrl) {
       throw new CliError("Live mode requires --base-url.", 2);
     }
 
     const currentConfig = await this.configStore.load();
-    const nextConfig: ProjectConfig = {
+    let nextConfig: ProjectConfig = {
       ...currentConfig,
       runtimeMode: options.runtimeMode,
-      apiBaseUrl: options.apiBaseUrl,
-      tokenEnvVar: options.tokenEnvVar,
+      activeProfile: options.activeProfile ?? currentConfig.activeProfile,
     };
+
+    if (options.runtimeMode === "live" && options.service) {
+      nextConfig = {
+        ...nextConfig,
+        services: {
+          ...currentConfig.services,
+          [options.service]: {
+            ...currentConfig.services[options.service],
+            enabled: true,
+            baseUrl: options.baseUrl,
+            auth: {
+              ...currentConfig.services[options.service].auth,
+              tokenEnvVar: options.tokenEnvVar ?? currentConfig.services[options.service].auth.tokenEnvVar,
+            },
+          },
+        },
+      };
+    }
 
     await this.configStore.save(nextConfig);
     return this.status();
@@ -43,14 +71,13 @@ export class AuthService {
 
   async status(): Promise<AuthStatus> {
     const config = await this.configStore.load();
-    const token = await this.tokenStore.getToken();
+    const services = await Promise.all(COPADO_SERVICES.map((service) => this.buildServiceStatus(service, config)));
 
     return {
-      configured: config.runtimeMode === "mock" || Boolean(config.apiBaseUrl),
+      configured: config.runtimeMode === "mock" || services.some((service) => service.configured),
       runtimeMode: config.runtimeMode,
-      apiBaseUrl: config.apiBaseUrl,
-      tokenEnvVar: config.tokenEnvVar,
-      tokenPresent: Boolean(token),
+      activeProfile: config.activeProfile,
+      services,
     };
   }
 
@@ -58,10 +85,46 @@ export class AuthService {
     const currentConfig = await this.configStore.load();
 
     await this.configStore.save({
+      ...currentConfig,
       runtimeMode: "mock",
       defaultOutput: currentConfig.defaultOutput,
+      services: {
+        cicd: {
+          enabled: false,
+          auth: {
+            type: "bearer",
+          },
+        },
+        ai: {
+          enabled: false,
+          auth: {
+            type: "bearer",
+          },
+        },
+        crt: {
+          enabled: false,
+          auth: {
+            type: "bearer",
+          },
+        },
+      },
     });
 
     return this.status();
+  }
+
+  private async buildServiceStatus(service: CopadoServiceName, config: ProjectConfig): Promise<ServiceStatus> {
+    const serviceConfig = config.services[service];
+    const tokenEnvVar = serviceConfig.auth.tokenEnvVar;
+    const token = tokenEnvVar ? await this.tokenStore.getToken(service) : undefined;
+
+    return {
+      service,
+      enabled: serviceConfig.enabled,
+      configured: serviceConfig.enabled && Boolean(serviceConfig.baseUrl) && Boolean(tokenEnvVar),
+      baseUrl: serviceConfig.baseUrl,
+      tokenEnvVar,
+      tokenPresent: Boolean(token),
+    };
   }
 }

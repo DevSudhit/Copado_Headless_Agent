@@ -77,6 +77,11 @@ node dist/index.js deploy --env PROD --approve
 - `.copado-hx.json` stores non-secret project configuration such as runtime mode
 - `.copado-hx.state.json` stores local workflow context such as the active story
 
+### Live Setup
+
+- Use `copado.env.example` as the starting point for local token and base URL variables.
+- Use `LIVE_SETUP.md` for the manual Copado playground, AI, and CRT onboarding checklist.
+
 ## Continuous Integration
 
 The repository includes a GitHub Actions workflow at `.github/workflows/ci.yml`.

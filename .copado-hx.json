@@ -1,4 +1,51 @@
 {
-  "runtimeMode": "mock",
-  "defaultOutput": "text"
+  "runtimeMode": "live",
+  "defaultOutput": "text",
+  "activeProfile": "playground",
+  "services": {
+    "cicd": {
+      "enabled": true,
+      "baseUrl": "https://na.api.copado.com",
+      "auth": {
+        "type": "bearer",
+        "tokenEnvVar": "COPADO_CICD_TOKEN"
+      }
+    },
+    "ai": {
+      "enabled": true,
+      "baseUrl": "https://copadogpt-api.eu-robotic.copado.com",
+      "auth": {
+        "type": "bearer",
+        "tokenEnvVar": "COPADO_AI_TOKEN"
+      }
+    },
+    "crt": {
+      "enabled": true,
+      "baseUrl": "https://eu-robotic.copado.com",
+      "auth": {
+        "type": "bearer",
+        "tokenEnvVar": "COPADO_CRT_TOKEN"
+      }
+    }
+  },
+  "salesforce": {
+    "sourceFormatRequired": true,
+    "projectRoot": "force-app",
+    "connectedAppsRequired": true
+  },
+  "environments": {
+    "UAT": {
+      "requiresValidation": true
+    },
+    "PROD": {
+      "requiresApproval": true,
+      "requiresValidation": true
+    },
+    "DEV1": {},
+    "DEV2": {},
+    "INT": {},
+    "HOTFIX": {
+      "requiresValidation": true
+    }
+  }
 }

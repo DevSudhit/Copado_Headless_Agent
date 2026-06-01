@@ -1,6 +1,7 @@
 import { Command } from "commander";
 
 import { TestingService } from "../services/testing-service.js";
+import { TestExecutionResult } from "../types/api.js";
 
 import { runCommand } from "./command-support.js";
 
@@ -10,6 +11,7 @@ interface SuiteOptions {
 
 interface ExecutionOptions {
   execution: string;
+  suite?: string;
 }
 
 export function registerTestingCommands(program: Command, testingService: TestingService): void {
@@ -23,11 +25,7 @@ export function registerTestingCommands(program: Command, testingService: Testin
       await runCommand(command, async () => {
         const result = await testingService.runSuite(options.suite);
         return {
-          summary: [
-            `Started suite ${result.suiteId}`,
-            `Execution ID: ${result.executionId}`,
-            `Status: ${result.status}`,
-          ].join("\n"),
+          summary: formatTestSummary(result, { started: true }),
           data: result,
         };
       });
@@ -37,15 +35,12 @@ export function registerTestingCommands(program: Command, testingService: Testin
     .command("status")
     .description("Check CRT execution status")
     .requiredOption("--execution <execution-id>", "CRT execution identifier")
+    .option("--suite <suite-id>", "CRT suite/job identifier for live lookups when needed")
     .action(async (options: ExecutionOptions, command: Command) => {
       await runCommand(command, async () => {
-        const result = await testingService.getStatus(options.execution);
+        const result = await testingService.getStatus(options.execution, options.suite);
         return {
-          summary: [
-            `Execution ID: ${result.executionId}`,
-            `Suite: ${result.suiteId}`,
-            `Status: ${result.status}`,
-          ].join("\n"),
+          summary: formatTestSummary(result),
           data: result,
         };
       });
@@ -55,19 +50,30 @@ export function registerTestingCommands(program: Command, testingService: Testin
     .command("results")
     .description("Fetch CRT execution results")
     .requiredOption("--execution <execution-id>", "CRT execution identifier")
+    .option("--suite <suite-id>", "CRT suite/job identifier for live lookups when needed")
     .action(async (options: ExecutionOptions, command: Command) => {
       await runCommand(command, async () => {
-        const result = await testingService.getResults(options.execution);
+        const result = await testingService.getResults(options.execution, options.suite);
         return {
-          summary: [
-            `Execution ID: ${result.executionId}`,
-            `Suite: ${result.suiteId}`,
-            `Status: ${result.status}`,
-            `Passed: ${result.passed ?? 0}`,
-            `Failed: ${result.failed ?? 0}`,
-          ].join("\n"),
+          summary: formatTestSummary(result, { includeCounts: true }),
           data: result,
         };
       });
     });
+}
+
+function formatTestSummary(
+  result: TestExecutionResult,
+  options: { started?: boolean; includeCounts?: boolean } = {},
+): string {
+  return [
+    ...(options.started ? [`Started suite ${result.suiteId}`] : []),
+    `Execution ID: ${result.executionId}`,
+    ...(options.started ? [] : [`Suite: ${result.suiteId}`]),
+    ...(result.initialStatus ? [`Initial Status: ${result.initialStatus}`] : []),
+    `${result.initialStatus ? "Current Status" : "Status"}: ${result.status}`,
+    ...(options.includeCounts ? [`Passed: ${result.passed ?? 0}`, `Failed: ${result.failed ?? 0}`] : []),
+    ...(result.jobDashboardUrl ? [`Job Dashboard: ${result.jobDashboardUrl}`] : []),
+    ...(result.runsDashboardUrl ? [`Runs Dashboard: ${result.runsDashboardUrl}`] : []),
+  ].join("\n");
 }
