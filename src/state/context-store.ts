@@ -1,6 +1,7 @@
 import { access, readFile, writeFile } from "node:fs/promises";
-import { constants } from "node:fs";
+import { constants, existsSync } from "node:fs";
 import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { CliError } from "../types/commands.js";
 import { SessionContext } from "../types/api.js";
@@ -8,7 +9,7 @@ import { SessionContext } from "../types/api.js";
 const STATE_FILE_NAME = ".copado-hx.state.json";
 
 export class ContextStore {
-  constructor(private readonly rootDir = process.cwd()) {}
+  constructor(private readonly rootDir = resolveRootDir(STATE_FILE_NAME)) {}
 
   get filePath(): string {
     return resolve(this.rootDir, STATE_FILE_NAME);
@@ -44,6 +45,16 @@ export class ContextStore {
     await this.save(nextContext);
     return nextContext;
   }
+}
+
+function resolveRootDir(fileName: string): string {
+  const cwd = process.cwd();
+
+  if (existsSync(resolve(cwd, fileName))) {
+    return cwd;
+  }
+
+  return resolve(fileURLToPath(new URL("../..", import.meta.url)));
 }
 
 async function fileExists(filePath: string): Promise<boolean> {

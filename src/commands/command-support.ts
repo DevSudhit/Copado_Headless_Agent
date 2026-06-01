@@ -23,6 +23,11 @@ export function getJsonFlag(command: Command): boolean {
   return Boolean(command.optsWithGlobals().json);
 }
 
-export function formatStoryLine(storyId: string, status: string, title: string): string {
-  return `${storyId}  ${status}  ${title}`;
+export function formatStoryLine(
+  storyId: string,
+  status: string,
+  title: string,
+  pipelineName?: string,
+): string {
+  return [storyId, status, title, ...(pipelineName ? [`[${pipelineName}]`] : [])].join("  ");
 }

@@ -13,7 +13,7 @@
     },
     "ai": {
       "enabled": true,
-      "baseUrl": "https://copadogpt-api.eu-robotic.copado.com",
+      "baseUrl": "https://copadogpt-api.robotic.copado.com",
       "auth": {
         "type": "bearer",
         "tokenEnvVar": "COPADO_AI_TOKEN"

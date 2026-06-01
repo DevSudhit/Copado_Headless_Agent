@@ -3,7 +3,7 @@ import { ConfigStore } from "../state/config-store.js";
 import { ContextStore } from "../state/context-store.js";
 import { TokenStore } from "../state/token-store.js";
 import { CliError } from "../types/commands.js";
-import { TestExecutionResult } from "../types/api.js";
+import { TestExecutionResult, TestJobSummary } from "../types/api.js";
 
 const RUN_STATUS_REFRESH_DELAY_MS = 4000;
 
@@ -38,6 +38,11 @@ export class TestingService {
       lastTestExecutionId: result.executionId,
     });
     return result;
+  }
+
+  async listJobs(): Promise<TestJobSummary[]> {
+    const runtime = await this.buildRuntime();
+    return runtime.client.listJobs();
   }
 
   async getStatus(executionId: string, suiteId?: string): Promise<TestExecutionResult> {

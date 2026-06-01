@@ -1,6 +1,7 @@
 import { access, readFile, writeFile } from "node:fs/promises";
-import { constants } from "node:fs";
+import { constants, existsSync } from "node:fs";
 import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { CliError } from "../types/commands.js";
 import {
@@ -58,7 +59,7 @@ interface LegacyServiceConfig {
 }
 
 export class ConfigStore {
-  constructor(private readonly rootDir = process.cwd()) {}
+  constructor(private readonly rootDir = resolveRootDir(CONFIG_FILE_NAME)) {}
 
   get filePath(): string {
     return resolve(this.rootDir, CONFIG_FILE_NAME);
@@ -102,6 +103,16 @@ export class ConfigStore {
     await this.save(nextConfig);
     return nextConfig;
   }
+}
+
+function resolveRootDir(fileName: string): string {
+  const cwd = process.cwd();
+
+  if (existsSync(resolve(cwd, fileName))) {
+    return cwd;
+  }
+
+  return resolve(fileURLToPath(new URL("../..", import.meta.url)));
 }
 
 function createDefaultServiceConfig(): CopadoServiceConfig {

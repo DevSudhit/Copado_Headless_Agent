@@ -65,6 +65,19 @@ export interface Story {
   title: string;
   status: string;
   description?: string;
+  pipelineId?: string;
+  pipelineName?: string;
+}
+
+export interface StoryListFilters {
+  pipeline?: string;
+  status?: string;
+}
+
+export interface StoryCreateInput {
+  title: string;
+  pipeline: string;
+  description?: string;
 }
 
 export interface PipelineOperationResult {
@@ -86,6 +99,15 @@ export interface TestExecutionResult {
   failed?: number;
   jobDashboardUrl?: string;
   runsDashboardUrl?: string;
+}
+
+export interface TestJobSummary {
+  id: string;
+  name: string;
+  description?: string;
+  suiteType?: string;
+  createdDate?: string;
+  timeout?: string;
 }
 
 export interface AgentResponse {

@@ -1,5 +1,5 @@
 import { CliError } from "../types/commands.js";
-import { TestExecutionResult } from "../types/api.js";
+import { TestExecutionResult, TestJobSummary } from "../types/api.js";
 
 export interface RunSuiteRequest {
   suiteId: string;
@@ -39,13 +39,34 @@ interface CrtBuild {
   };
 }
 
+interface CrtJob {
+  id: number | string;
+  name?: string;
+  description?: string;
+  suiteType?: string;
+  createdDate?: string;
+  timeout?: string;
+}
+
 export interface CrtClient {
+  listJobs(): Promise<TestJobSummary[]>;
   runSuite(request: RunSuiteRequest): Promise<TestExecutionResult>;
   getExecutionStatus(request: ExecutionLookupRequest): Promise<TestExecutionResult>;
   getExecutionResults(request: ExecutionLookupRequest): Promise<TestExecutionResult>;
 }
 
 export class MockCrtClient implements CrtClient {
+  async listJobs(): Promise<TestJobSummary[]> {
+    return [
+      {
+        id: "smoke",
+        name: "Smoke Suite",
+        description: "Default smoke coverage for the active pipeline.",
+        suiteType: "default",
+      },
+    ];
+  }
+
   async runSuite(request: RunSuiteRequest): Promise<TestExecutionResult> {
     return {
       executionId: createExecutionId(),
@@ -75,6 +96,31 @@ export class MockCrtClient implements CrtClient {
 
 export class LiveCrtClient implements CrtClient {
   constructor(private readonly options: LiveCrtClientOptions) {}
+
+  async listJobs(): Promise<TestJobSummary[]> {
+    const url = new URL(this.getProjectUrl("jobs"));
+    url.searchParams.set("limit", "20");
+
+    const response = await fetch(url, {
+      headers: this.buildHeaders(false),
+    });
+
+    if (!response.ok) {
+      throw await buildApiError("Unable to fetch CRT jobs", response);
+    }
+
+    const payload = (await response.json()) as CrtApiResult<CrtJob[]>;
+    const jobs = unwrapApiData(payload);
+
+    return jobs.map((job) => ({
+      id: String(job.id),
+      name: job.name?.trim() || `Job ${job.id}`,
+      description: job.description?.trim() || undefined,
+      suiteType: job.suiteType?.trim() || undefined,
+      createdDate: job.createdDate,
+      timeout: job.timeout?.trim() || undefined,
+    }));
+  }
 
   async runSuite(request: RunSuiteRequest): Promise<TestExecutionResult> {
     const suiteId = parseNumericId(request.suiteId, "CRT suite/job ID");
