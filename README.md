@@ -307,3 +307,6 @@ npm test
 Covers:
 - Production deployment guardrail blocking unapproved PROD deploys
 - Story context service listing and persisting active story (runs against live org when `sf` session is active)
+---
+<!-- US-0000027 -->
+> **Story US-0000027 — test-ashish branch**: Change committed via `copado-hx` CLI on 2 June 2026.
