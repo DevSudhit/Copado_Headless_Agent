@@ -1,3 +1,4 @@
+import { SalesforceClient } from "../clients/salesforce-client.js";
 import { ConfigStore } from "../state/config-store.js";
 import { ContextStore } from "../state/context-store.js";
 import { CliError } from "../types/commands.js";
@@ -31,26 +32,49 @@ export class StoryContextService {
   ) {}
 
   async listStories(): Promise<Story[]> {
-    const config = await this.configStore.load();
-
-    if (config.runtimeMode !== "mock") {
-      throw new CliError(
-        "Live Copado story APIs are not wired yet. Switch to mock mode or implement the real client next.",
-        2,
+    // Prefer live Salesforce data when the SF CLI session is available
+    const sf = new SalesforceClient();
+    if (sf.isAvailable()) {
+      const rows = sf.query<Record<string, unknown>>(
+        `SELECT Id, Name, copado__Status__c, copado__User_Story_Title__c
+         FROM copado__User_Story__c
+         ORDER BY Name ASC LIMIT 50`,
       );
+      if (rows.length > 0) {
+        return rows.map((r) => ({
+          id: r["Name"] as string,
+          title: (r["copado__User_Story_Title__c"] as string | null) ?? (r["Name"] as string),
+          status: (r["copado__Status__c"] as string) ?? "Unknown",
+        }));
+      }
     }
 
+    // Fall back to mock data
     return MOCK_STORIES;
   }
 
   async getStory(storyId: string): Promise<Story> {
-    const stories = await this.listStories();
-    const story = stories.find((item) => item.id === storyId);
-
-    if (!story) {
-      throw new CliError("Story not found in the current runtime mode.", 2, { storyId });
+    const sf = new SalesforceClient();
+    if (sf.isAvailable()) {
+      const rows = sf.query<Record<string, unknown>>(
+        `SELECT Id, Name, copado__Status__c, copado__User_Story_Title__c
+         FROM copado__User_Story__c WHERE Name = '${storyId}' LIMIT 1`,
+      );
+      if (rows.length > 0) {
+        const r = rows[0];
+        return {
+          id: r["Name"] as string,
+          title: (r["copado__User_Story_Title__c"] as string | null) ?? (r["Name"] as string),
+          status: (r["copado__Status__c"] as string) ?? "Unknown",
+        };
+      }
     }
 
+    // Fall back to mock
+    const story = MOCK_STORIES.find((item) => item.id === storyId);
+    if (!story) {
+      throw new CliError("Story not found.", 2, { storyId });
+    }
     return story;
   }
 
@@ -64,7 +88,7 @@ export class StoryContextService {
     const context = await this.contextStore.load();
 
     if (!context.currentStoryId) {
-      throw new CliError("No active story is set. Use `copado-hx story set --id <story-id>` first.", 2);
+      throw new CliError("No active story is set. Use `trinetra story set --id <story-id>` first.", 2);
     }
 
     return this.getStory(context.currentStoryId);

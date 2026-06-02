@@ -5,7 +5,9 @@
       "defaultFolder": "vlocity/**"
     },
     "SFDX": {
-      "rootfolder": [],
+      "rootfolder": [
+        "force-app/**"
+      ],
       "config": {
         "filepath": "sfdx-project.json",
         "property": "packageDirectories[].path"

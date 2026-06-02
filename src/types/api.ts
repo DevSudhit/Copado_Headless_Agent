@@ -15,10 +15,18 @@ export interface ProjectConfig {
   tokenEnvVar?: string;
 }
 
+export interface CliCommitRecord {
+  operationId: string;
+  storyId: string;
+  message: string;
+  timestamp: string;
+}
+
 export interface SessionContext {
   currentStoryId?: string;
   lastPromotionEnvironment?: string;
   lastDeploymentEnvironment?: string;
+  commitHistory?: CliCommitRecord[];
 }
 
 export interface Story {
