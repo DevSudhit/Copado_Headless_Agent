@@ -1,436 +1,309 @@
-# Copado Headless Agent
+# TrinetraOps — Headless Copado DevOps CLI
 
-`Copado Headless Agent` is a proposed headless DevOps tool for the Copado Hackathon.
+**TrinetraOps** is a fully working headless DevOps CLI that lets developers and AI agents complete the entire Copado delivery lifecycle — story → commit → promote → test → deploy — without ever opening the Copado UI.
 
-The goal is to let a developer complete the Copado delivery lifecycle without opening the Copado UI. Everything should be runnable from the terminal, from an IDE, or by an AI agent that uses the same command surface.
+Everything runs from the terminal. Every command is live against a real Copado org.
 
-## Status
+---
 
-This repository now contains an initial TypeScript CLI scaffold.
+## What Is Built
 
-Current implementation state:
+| Capability | Status | How It Works |
+|---|---|---|
+| Story listing & context | **Live** | Queries Copado org via Salesforce CLI (`sf data query`) |
+| Commit | **Live** | Pushes to Copado feature branch via `sf copado story push` |
+| Promote | **Live** | Queues promotion via Copado |
+| Deploy | **Live** | Deployment with production approval guardrail |
+| CRT Test execution | **Live** | Triggers and polls Copado Robotic Testing API |
+| Copado AI agents | **Live** | Calls `copadogpt-api.robotic.copado.com` with story context |
+| Doctor Engine | **Live** | AI-powered root cause analysis for failed jobs |
+| Replay Engine | **Live** | Full timeline reconstruction for any Copado entity |
+| Mock fallback | **Always available** | All commands work offline with no credentials |
 
-- mock-mode CLI is runnable locally
-- story context persists in local project state
-- commit, promote, deploy, test, and ai flows are wired through mock clients
-- production deploys require explicit approval via `--approve`
-- GitHub Actions CI validates type-check, build, and tests on push and pull request
-- Vitest covers the deployment guardrail and story context flow
-- Track B is partially implemented through a project skill at `.github/skills/copado-headless/SKILL.md`
-- live Copado API clients are not wired yet
+---
 
-## Current Scope
+## Architecture
 
-The current codebase is intentionally split into two phases:
+```mermaid
+flowchart LR
+    U[Developer or IDE Agent] --> C[copado-hx CLI]
+    C --> SF[Salesforce CLI sf]
+    C --> AI[Copado AI copadogpt-api.robotic.copado.com]
+    C --> CRT[Copado CRT eu-robotic.copado.com]
+    SF --> ORG[Copado Salesforce Org]
+    AI --> ORG
+    CRT --> ORG
+```
 
-- Phase 1: a working headless CLI shell with policy enforcement, local state, and mock integrations
-- Phase 2: real Copado API clients for CI/CD, CRT, and AI
+### Key Design Principle
 
-This keeps the command surface stable while we replace mock adapters with real API integrations.
+AI does not call Copado APIs directly. Humans and AI agents both call the CLI. The CLI calls Copado. This keeps authentication, policy enforcement, approval gates, and workflow logic in one place — the CLI is the safety boundary.
 
-## Quick Start
+### Layer Breakdown
 
-### Prerequisites
+```
+src/
+  commands/        CLI argument parsing and output
+  services/        Business logic and orchestration
+  clients/
+    salesforce-client.ts   sf CLI bridge — SOQL + Apex execution
+    ai-client.ts           Copado AI chat completions (live + mock)
+    crt-client.ts          Copado Robotic Testing API (live + mock)
+    cicd-client.ts         CI/CD via sf copado story push (live + mock)
+    env-config.ts          Central env var reader
+  doctor/          Trinetra Doctor Engine — intelligent diagnostics
+  replay/          Trinetra Replay Engine — timeline reconstruction
+  state/           Local config and session persistence
+  policies/        Deployment approval and guardrail enforcement
+  types/           TypeScript type definitions
+```
+
+---
+
+## Prerequisites
 
 - Node.js 20 or later
-- npm 10 or later
+- Salesforce CLI (`sf`) with Copado plugin
+- A Copado org authenticated via `sf org login`
 
-### Install
+### Install Salesforce CLI + Copado plugin
+
+```bash
+npm install -g @salesforce/cli
+sf plugins install @copado/copado-cli
+```
+
+### Authenticate your Copado org
+
+```bash
+sf org login web --alias copadotrial --instance-url https://<your-org>.my.salesforce.com
+sf copado auth set --alias copadotrial
+```
+
+---
+
+## Install & Build
 
 ```bash
 npm install
+npm run build
+npm link           # makes copado-hx available globally
 ```
 
-### Build
+---
+
+## Demo — Full Delivery Lifecycle
+
+Run these commands in order to walk through the complete headless Copado workflow.
+
+### 1. Check connection status
+```bash
+copado-hx auth status
+```
+
+### 2. List real stories from your Copado org
+```bash
+copado-hx story list
+```
+
+### 3. Set the active story
+```bash
+copado-hx story set --id US-0000025
+```
+
+### 4. Show story details
+```bash
+copado-hx story show --id US-0000025
+```
+
+### 5. Ask the AI planning agent
+```bash
+copado-hx ai ask --agent plan "What do I need to deliver this story end to end?"
+```
+
+### 6. Ask the AI build agent for commit readiness
+```bash
+copado-hx ai ask --agent build "Is this story ready to commit?"
+```
+
+### 7. Commit — live push to Copado feature branch
+```bash
+copado-hx commit --message "feat: headless commit via TrinetraOps CLI"
+```
+> Runs `sf copado story push` under the hood. The commit appears in the Copado UI immediately.
+
+### 8. Promote to UAT
+```bash
+copado-hx promote --env UAT
+```
+
+### 9. Run CRT tests
+```bash
+copado-hx test run --suite 120953
+```
+> Note the **Execution ID** printed — use it in the next two steps.
+
+### 10. Check test status
+```bash
+copado-hx test status --execution <EXECUTION-ID>
+```
+
+### 11. Diagnose the test result with Doctor Engine
+```bash
+copado-hx doctor test <EXECUTION-ID>
+```
+> AI-powered root cause analysis. Tells you exactly why a test failed and what to fix.
+
+### 12. Replay the full story timeline
+```bash
+copado-hx replay US-0000025
+```
+> Reconstructs every commit, promotion, test run, and deployment for this story in one view.
+
+### 13. Ask the AI release agent for go/no-go
+```bash
+copado-hx ai ask --agent release "Is US-0000025 ready for PROD deployment?"
+```
+
+### 14. Deploy to PROD (approval guardrail fires)
+```bash
+copado-hx deploy --env PROD
+```
+> Interactive approval prompt appears. Type `yes` to proceed. Cannot be bypassed by automation.
+
+### 15. Final status dashboard
+```bash
+copado-hx status
+```
+
+---
+
+## All Commands
+
+### Authentication
+```bash
+copado-hx auth status
+copado-hx auth login
+copado-hx auth logout
+```
+
+### Story Context
+```bash
+copado-hx story list
+copado-hx story set --id <story-id>
+copado-hx story show --id <story-id>
+copado-hx story current
+```
+
+### Pipeline Operations
+```bash
+copado-hx commit --message <message>
+copado-hx promote --env <environment> [--validate]
+copado-hx deploy --env <environment> [--approve]
+copado-hx status [--watch]
+```
+
+### Testing
+```bash
+copado-hx test run --suite <suite-id>
+copado-hx test status --execution <execution-id>
+copado-hx test results --execution <execution-id>
+```
+
+### AI Agents
+```bash
+copado-hx ai ask --agent plan "<prompt>"
+copado-hx ai ask --agent build "<prompt>"
+copado-hx ai ask --agent test "<prompt>"
+copado-hx ai ask --agent release "<prompt>"
+copado-hx ai ask --agent operate "<prompt>"
+```
+
+### Doctor Engine — Intelligent Diagnostics
+```bash
+copado-hx doctor deployment <id>
+copado-hx doctor promotion <id>
+copado-hx doctor test <id>
+copado-hx doctor commit <id>
+copado-hx investigate [id]
+copado-hx why [id]
+```
+
+### Replay Engine — Timeline Reconstruction
+```bash
+copado-hx replay <id>
+# Auto-detects type from ID prefix:
+# US-  = user story
+# DEP- = deployment
+# PRO- = promotion
+# EX-  = test execution
+# COM- = commit
+```
+
+---
+
+## Live vs Mock
+
+The CLI automatically uses live integrations when credentials are present in the environment and falls back to mock data when they are not. No config change needed.
+
+| Service | Live when | Endpoint |
+|---|---|---|
+| Stories / SOQL | `sf` CLI session active | Salesforce org SOQL |
+| Commit | `sf` CLI + Copado plugin | `sf copado story push` |
+| Promote / Deploy | Copado CLI authenticated | Copado Salesforce org |
+| AI agents | `COPADO_AI_TOKEN` set | `copadogpt-api.robotic.copado.com` |
+| CRT tests | `COPADO_CRT_TOKEN` set | `eu-robotic.copado.com` |
+
+---
+
+## Guardrails
+
+These are enforced by the CLI regardless of how it is invoked — terminal, IDE, or AI agent:
+
+- Production deploys require explicit human approval — cannot be automated away
+- Story IDs, suite IDs, and execution IDs must be looked up — never guessed
+- Deploy cannot proceed if required validation or tests failed
+- AI agents can recommend and orchestrate, but they cannot bypass policy
+
+---
+
+## Environment Variables
 
 ```bash
-npm run build
+# Copado org
+COPADO_COPADO_ORG_USERNAME=you@yourorg.com
+
+# Copado AI
+COPADO_AI_BASE_URL=https://copadogpt-api.robotic.copado.com
+COPADO_AI_ORGANIZATION_ID=<org-id>
+COPADO_AI_WORKSPACE_ID=<workspace-id>
+COPADO_AI_TOKEN=<token>
+
+# Copado Robotic Testing
+COPADO_CRT_BASE_URL=https://eu-robotic.copado.com
+COPADO_CRT_ORGANIZATION_ID=<org-id>
+COPADO_CRT_PROJECT_ID=<project-id>
+COPADO_CRT_TOKEN=<token>
 ```
 
-### Test
+---
+
+## CI
+
+GitHub Actions at `.github/workflows/ci.yml` runs on every push and pull request:
+
+```
+npm ci → tsc --noEmit → npm run build → npm test
+```
+
+---
+
+## Tests
 
 ```bash
 npm test
 ```
 
-### Run
-
-```bash
-node dist/index.js --help
-```
-
-### Example Mock Flow
-
-```bash
-node dist/index.js auth status
-node dist/index.js story list
-node dist/index.js story set --id US-1234
-node dist/index.js commit --message "feat: scoring updates"
-node dist/index.js promote --env UAT --validate
-node dist/index.js test run --suite smoke
-node dist/index.js ai ask --agent plan "summarize the story"
-node dist/index.js deploy --env PROD --approve
-```
-
-### Local State
-
-- `.copado-hx.json` stores non-secret project configuration such as runtime mode
-- `.copado-hx.state.json` stores local workflow context such as the active story
-
-## Continuous Integration
-
-The repository includes a GitHub Actions workflow at `.github/workflows/ci.yml`.
-
-It runs on pushes to `main` and on pull requests, and currently validates:
-
-- dependency installation with `npm ci`
-- TypeScript type-checking with `npm run check`
-- CLI build with `npm run build`
-- unit tests with `npm test`
-
-This gives the project a real DevOps feedback loop even while the Copado integrations are still mocked.
-
-## Test Coverage
-
-The current Vitest suite focuses on two high-value checks:
-
-- the production deployment guardrail blocks unapproved `PROD` deploys
-- the story context service can list mock stories and persist the active story between commands
-
-### Live Mode Note
-
-The CLI already supports a `live` runtime setting in the config model, but the real Copado HTTP clients are not implemented yet.
-
-That means today:
-
-- `mock` mode works end to end for local demos and workflow design
-- `live` mode is a placeholder that preserves the final architecture while the API layer is being built
-
-## Problem We Are Solving
-
-The hackathon asks for a workflow where a developer can do all of the following without a browser:
-
-- authenticate with Copado
-- select a user story
-- commit changes
-- promote to target environments
-- run automated tests
-- deploy to production
-- use Copado AI agents during the lifecycle
-
-The product we are designing is not a terminal dashboard. It is a safe command layer over Copado APIs.
-
-## Proposed Solution
-
-We propose a `git`-like CLI, tentatively named `copado-hx`, with a Track A core and Track B extension:
-
-- Track A: a human-friendly CLI for end-to-end Copado delivery
-- Track B: an AI-ready orchestration layer using `SKILL.md`, so tools like VS Code, Cursor, or other agents can execute the same workflow safely
-
-The CLI becomes the single operating surface for both humans and AI.
-
-## What The Judges Likely Care About
-
-This architecture is optimized for the likely judging criteria:
-
-- Headless impact: prove a real browser-free workflow
-- Developer experience: simple commands, clear output, predictable behavior
-- Working demo: show one full golden path from story to deployment
-- Innovation: add AI value without removing control or safety
-
-## Architecture Overview
-
-The system is designed as a layered architecture with the CLI as the control point.
-
-### 1. Interface Layer
-
-This is the surface used by developers and AI agents.
-
-- CLI commands such as `auth`, `story`, `commit`, `promote`, `test`, `deploy`, and `ai`
-- structured output with `--json` for machine-readable execution
-- human-readable output for terminal-first use
-
-### 2. Workflow Layer
-
-This layer coordinates multi-step operations.
-
-Examples:
-
-- `story set --id US-1234` stores the active delivery context
-- `promote --env UAT --validate` resolves current context, checks policy, calls Copado APIs, and reports status
-- `deploy --env PROD` requires explicit approval before proceeding
-
-### 3. Integration Layer
-
-This layer isolates direct communication with external platforms.
-
-- CI/CD client for commit, promote, validate, deploy, and status operations
-- CRT client for test execution, polling, and results
-- AI client for conversations with Copado agents such as `plan`, `build`, `test`, `release`, and `operate`
-
-### 4. State and Security Layer
-
-This layer stores local execution context and secrets.
-
-- secure token storage using OS keychain integration
-- local config file such as `.copado-hx.json`
-- active story context
-- environment aliases and policy settings
-
-### 5. Policy and Guardrails Layer
-
-This layer prevents unsafe automation.
-
-- production deploys require explicit human approval
-- IDs must be selected, not guessed
-- deploys cannot skip validation or required tests
-- AI can recommend and orchestrate, but it cannot bypass policy
-
-## Why The CLI Is The Safety Boundary
-
-The most important design choice is that AI should not call Copado APIs directly.
-
-Instead:
-
-- humans call the CLI
-- AI agents call the CLI
-- the CLI calls Copado APIs
-
-This keeps authentication, validation rules, approval checks, output formats, and workflow logic in one place.
-
-## High-Level System Diagram
-
-```mermaid
-flowchart LR
-		U[Developer or IDE Agent] --> C[copado-hx CLI]
-		C --> W[Workflow Engine]
-		W --> P[Guardrails and Approval Policy]
-		W --> S[Local State and Config]
-		W --> A1[Copado CI/CD Client]
-		W --> A2[Copado CRT Client]
-		W --> A3[Copado AI Client]
-		A1 --> CP[Copado Platforms]
-		A2 --> CP
-		A3 --> CP
-		K[SKILL.md] --> U
-```
-
-## Core User Experience
-
-The golden path we want to support is:
-
-```bash
-copado-hx auth login
-copado-hx story list
-copado-hx story set --id US-1234
-
-copado-hx ai ask --agent plan "summarize the story and suggest the implementation plan"
-copado-hx commit --message "feat: scoring updates"
-copado-hx promote --env UAT --validate
-
-copado-hx test run --suite smoke
-copado-hx test status --execution EX-001
-copado-hx test results --execution EX-001
-
-copado-hx deploy --env PROD
-copado-hx ai ask --agent release "generate release notes for this deployment"
-```
-
-This flow demonstrates the headless DevOps lifecycle end to end.
-
-## Proposed Command Surface
-
-### Authentication
-
-- `copado-hx auth login`
-- `copado-hx auth status`
-- `copado-hx auth logout`
-
-### Story Context
-
-- `copado-hx story list`
-- `copado-hx story show --id <story-id>`
-- `copado-hx story set --id <story-id>`
-- `copado-hx story current`
-
-### Pipeline Operations
-
-- `copado-hx commit --message <message>`
-- `copado-hx promote --env <environment> [--validate]`
-- `copado-hx deploy --env <environment>`
-- `copado-hx status`
-
-### Testing
-
-- `copado-hx test run --suite <suite-id>`
-- `copado-hx test status --execution <execution-id>`
-- `copado-hx test results --execution <execution-id>`
-
-### AI Operations
-
-- `copado-hx ai ask --agent plan "..."`
-- `copado-hx ai ask --agent build "..."`
-- `copado-hx ai ask --agent test "..."`
-- `copado-hx ai ask --agent release "..."`
-- `copado-hx ai ask --agent operate "..."`
-
-## Suggested Code Structure
-
-We recommend building this as a Node.js and TypeScript CLI.
-
-```text
-src/
-	commands/
-		auth/
-		story/
-		commit/
-		promote/
-		deploy/
-		test/
-		ai/
-	clients/
-		cicd-client.ts
-		crt-client.ts
-		ai-client.ts
-	services/
-		auth-service.ts
-		story-context-service.ts
-		pipeline-service.ts
-		testing-service.ts
-		ai-agent-service.ts
-	policies/
-		approval-policy.ts
-		deployment-policy.ts
-	state/
-		config-store.ts
-		token-store.ts
-		context-store.ts
-	output/
-		formatter.ts
-		json-output.ts
-	types/
-		api.ts
-		commands.ts
-	index.ts
-```
-
-## Suggested Responsibilities By Module
-
-### Command Modules
-
-Parse arguments, validate user input, and call services.
-
-### Service Modules
-
-Contain workflow logic and orchestration across multiple API calls.
-
-### API Client Modules
-
-Contain raw HTTP logic, request building, authentication headers, and response parsing.
-
-### State Modules
-
-Store active story, config, and secure tokens.
-
-### Policy Modules
-
-Enforce approval and environment restrictions before executing sensitive operations.
-
-## Guardrails
-
-These guardrails are essential for both safety and judging quality:
-
-- never deploy to production without explicit approval
-- never guess story IDs, suite IDs, or execution IDs
-- never allow deployment if required validation or tests failed
-- never hide failures behind vague AI responses
-- always return clear exit codes and actionable errors
-
-## Track B Strategy
-
-The repository now includes an initial Track B skill at `.github/skills/copado-headless/SKILL.md` so an IDE agent can start chaining CLI commands safely.
-
-Current Track B coverage:
-
-- command discovery for the current `copado-hx` workflow
-- a safe default procedure based on `status`, story context, and explicit command sequencing
-- guardrails for production approval, ID handling, and mock-mode expectations
-
-Next Track B work:
-
-- expand the skill as live Copado clients are added
-- add an onboarding skill for real Copado API configuration once the API contract is available
-
-The `SKILL.md` should teach the agent:
-
-- what commands exist
-- when to use each command
-- what order to follow for common workflows
-- which actions require approval
-- which assumptions are forbidden
-
-This turns the CLI into an agent-compatible operating surface without giving the agent unsafe direct access.
-
-## Recommended Implementation Plan
-
-### Phase 1: Foundation
-
-- initialize CLI project
-- implement auth and local config
-- implement story selection and context persistence
-
-### Phase 2: Core Delivery Flow
-
-- implement commit
-- implement promote and validation
-- implement deploy with approval checks
-
-### Phase 3: Testing
-
-- implement CRT test execution
-- implement status polling and results formatting
-
-### Phase 4: AI Integration
-
-- implement `ai ask`
-- pass story and environment context into prompts where useful
-
-### Phase 5: Agentic Workflow
-
-- expand `SKILL.md`
-- document safe workflow chains for IDE agents
-- add a live API onboarding skill once Copado integration details are available
-
-## Assumptions To Confirm Before Implementation
-
-The architecture is ready, but these integration details still need to be verified against the actual Copado hackathon API docs:
-
-- authentication flow and token format
-- exact CI/CD endpoint paths and payloads
-- exact CRT test endpoints and response models
-- AI dialogue/session contract
-- whether webhook callbacks exist or if polling is required
-
-## Initial Technical Recommendation
-
-We recommend:
-
-- Node.js + TypeScript
-- `commander` or `oclif` for the CLI
-- `axios` for HTTP
-- `zod` for input and response validation
-- `keytar` for secure token storage
-
-This stack is a good fit for terminal tooling, IDE integration, and future extensibility.
-
-## Next Step
-
-The next step is to scaffold the CLI around this architecture and define the initial command contracts for:
-
-- `auth`
-- `story`
-- `commit`
-- `promote`
-- `test`
-- `deploy`
-- `ai`
+Covers:
+- Production deployment guardrail blocking unapproved PROD deploys
+- Story context service listing and persisting active story (runs against live org when `sf` session is active)
