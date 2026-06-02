@@ -14,6 +14,7 @@ import {
   registerInvestigateCommand,
   registerWhyCommand,
 } from "./doctor/doctor-commands.js";
+import { registerReplayCommands } from "./replay/replay-commands.js";
 import { AIAgentService } from "./services/ai-agent-service.js";
 import { AuthService } from "./services/auth-service.js";
 import { PipelineService } from "./services/pipeline-service.js";
@@ -41,12 +42,13 @@ program
 
 registerAuthCommands(program, authService);
 registerStoryCommands(program, storyService);
-registerPipelineCommands(program, pipelineService);
+registerPipelineCommands(program, pipelineService, storyService);
 registerTestingCommands(program, testingService);
 registerAICommands(program, aiService);
 registerDoctorCommands(program);
 registerInvestigateCommand(program);
 registerWhyCommand(program);
+registerReplayCommands(program);
 
 program
   .command("status")

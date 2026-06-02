@@ -1,11 +1,13 @@
 import { Command } from "commander";
 
 import { PipelineService } from "../services/pipeline-service.js";
+import { StoryContextService } from "../services/story-context-service.js";
 
 import { runCommand } from "./command-support.js";
 
 interface CommitOptions {
   message: string;
+  us?: string;
 }
 
 interface PromoteOptions {
@@ -18,13 +20,21 @@ interface DeployOptions {
   approve?: boolean;
 }
 
-export function registerPipelineCommands(program: Command, pipelineService: PipelineService): void {
+export function registerPipelineCommands(
+  program: Command,
+  pipelineService: PipelineService,
+  storyService: StoryContextService,
+): void {
   program
     .command("commit")
     .description("Commit the active story through the Copado CI/CD workflow")
     .requiredOption("--message <message>", "Commit message to record")
+    .option("--us <storyId>", "Set this story as active before committing (shorthand for story set + commit)")
     .action(async (options: CommitOptions, command: Command) => {
       await runCommand(command, async () => {
+        if (options.us) {
+          await storyService.setCurrentStory(options.us);
+        }
         const result = await pipelineService.commit(options.message);
         return {
           summary: `${result.message}\nOperation ID: ${result.operationId}`,

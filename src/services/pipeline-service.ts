@@ -15,7 +15,18 @@ export class PipelineService {
 
   async commit(message: string): Promise<PipelineOperationResult> {
     const storyId = await this.requireCurrentStoryId();
-    return this.client.commit({ storyId, message });
+    const result = await this.client.commit({ storyId, message });
+    // Record the CLI commit in local state so Replay Engine can surface it
+    const ctx = await this.contextStore.load();
+    const history = ctx.commitHistory ?? [];
+    history.push({
+      operationId: result.operationId,
+      storyId,
+      message,
+      timestamp: new Date().toISOString(),
+    });
+    await this.contextStore.update({ commitHistory: history });
+    return result;
   }
 
   async promote(environment: string, validate: boolean): Promise<PipelineOperationResult> {

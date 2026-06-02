@@ -5,7 +5,8 @@
   "private": true,
   "type": "module",
   "bin": {
-    "copado-hx": "./dist/index.js"
+    "copado-hx": "./dist/index.js",
+    "trinetra": "./dist/index.js"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
