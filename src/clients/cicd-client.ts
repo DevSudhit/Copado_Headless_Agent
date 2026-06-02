@@ -96,20 +96,8 @@ export class LiveCicdClient implements CicdClient {
       };
     }
 
-    // ── Step 2: Bind the Copado CLI to the user story ─────────────────────────
-    // `sf copado story set` links this git repo to the given story so that
-    // `sf copado story push` knows where to push.
-    try {
-      execSync(`sf copado story set --story "${request.storyId}" --json 2>&1`, {
-        encoding: "utf8",
-        timeout: 30_000,
-        stdio: "pipe",
-      });
-    } catch {
-      // story set may fail if there are unstaged changes — continue anyway
-    }
-
-    // ── Step 3: Stage and git-commit any pending local changes ────────────────
+    // ── Step 2: Stage and git-commit any pending local changes ────────────────
+    // Must happen BEFORE `sf copado story set` which requires a clean working tree.
     try {
       const status = execSync("git status --porcelain 2>/dev/null", {
         encoding: "utf8",
@@ -124,6 +112,19 @@ export class LiveCicdClient implements CicdClient {
       }
     } catch {
       // git may not be available or there's nothing to commit — continue
+    }
+
+    // ── Step 3: Bind the Copado CLI to the user story ─────────────────────────
+    // `sf copado story set` links this git repo to the given story so that
+    // `sf copado story push` knows where to push.
+    try {
+      execSync(`sf copado story set --story "${request.storyId}" --json 2>&1`, {
+        encoding: "utf8",
+        timeout: 30_000,
+        stdio: "pipe",
+      });
+    } catch {
+      // story set may fail if the story is already bound — continue
     }
 
     // ── Step 4: Push via the official Copado CLI (`sf copado story push`) ─────
