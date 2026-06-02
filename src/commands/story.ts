@@ -8,6 +8,11 @@ interface StoryIdentityOptions {
   id: string;
 }
 
+interface StoryUpdateOptions {
+  id: string;
+  status: string;
+}
+
 export function registerStoryCommands(program: Command, storyService: StoryContextService): void {
   const story = program.command("story").description("Manage active Copado user story context");
 
@@ -71,6 +76,21 @@ export function registerStoryCommands(program: Command, storyService: StoryConte
             `Title: ${item.title}`,
             `Status: ${item.status}`,
           ].join("\n"),
+          data: item,
+        };
+      });
+    });
+
+  story
+    .command("update")
+    .description("Update a story field (e.g. status)")
+    .requiredOption("--id <story-id>", "Story ID to update")
+    .requiredOption("--status <status>", "New status value (e.g. Completed, In Progress, Draft)")
+    .action(async (options: StoryUpdateOptions, command: Command) => {
+      await runCommand(command, async () => {
+        const item = await storyService.updateStory(options.id, options.status);
+        return {
+          summary: `Story ${item.id} updated — Status: ${item.status}`,
           data: item,
         };
       });

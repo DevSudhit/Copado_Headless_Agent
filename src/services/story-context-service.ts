@@ -93,4 +93,32 @@ export class StoryContextService {
 
     return this.getStory(context.currentStoryId);
   }
+
+  async updateStory(storyId: string, status: string): Promise<Story> {
+    const sf = new SalesforceClient();
+
+    if (sf.isAvailable()) {
+      const result = sf.runApex(`
+        List<copado__User_Story__c> stories = [
+          SELECT Id, Name FROM copado__User_Story__c WHERE Name = '${storyId}' LIMIT 1
+        ];
+        if (stories.isEmpty()) throw new AuraHandledException('Story ${storyId} not found.');
+        stories[0].copado__Status__c = '${status}';
+        update stories[0];
+        System.debug('Updated ' + stories[0].Name + ' to ${status}');
+      `);
+
+      if (!result.success) {
+        throw new CliError(
+          `Failed to update story ${storyId}: ${result.output.slice(0, 300)}`,
+          2,
+          { storyId, status },
+        );
+      }
+    }
+
+    // Return the story with the updated status (re-query or fake it from mock)
+    const story = await this.getStory(storyId);
+    return { ...story, status };
+  }
 }
