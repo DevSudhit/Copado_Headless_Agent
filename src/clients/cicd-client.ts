@@ -159,25 +159,85 @@ export class LiveCicdClient implements CicdClient {
   }
 
   async promote(request: PromoteRequest): Promise<PipelineOperationResult> {
-    return {
-      operationId: createOperationId("PRO"),
-      operation: "promote",
-      storyId: request.storyId,
-      environment: request.environment,
-      status: "success",
-      message: `Promotion of ${request.storyId} to ${request.environment} queued via Copado.`,
-      validationRequested: request.validate,
-    };
+    const operationId = createOperationId("PRO");
+
+    try {
+      execSync(`sf copado story set --story "${request.storyId}" 2>&1`, {
+        encoding: "utf8",
+        timeout: 30_000,
+        stdio: "pipe",
+      });
+    } catch { /* already bound — continue */ }
+
+    try {
+      const flag = request.validate ? "--validate" : "--promote";
+      const output = execSync(`sf copado story submit ${flag} --wait 2>&1`, {
+        encoding: "utf8",
+        timeout: 120_000,
+        stdio: "pipe",
+      }).trim();
+
+      const succeeded = /success|complet|promot/i.test(output);
+      return {
+        operationId,
+        operation: "promote",
+        storyId: request.storyId,
+        environment: request.environment,
+        status: succeeded ? "success" : "queued",
+        message: output.slice(0, 300) || `Story ${request.storyId} submitted for promotion to ${request.environment}.`,
+        validationRequested: request.validate,
+      };
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return {
+        operationId,
+        operation: "promote",
+        storyId: request.storyId,
+        environment: request.environment,
+        status: "failed",
+        message: `Promotion failed: ${msg.slice(0, 300)}`,
+        validationRequested: request.validate,
+      };
+    }
   }
 
   async deploy(request: DeployRequest): Promise<PipelineOperationResult> {
-    return {
-      operationId: createOperationId("DEP"),
-      operation: "deploy",
-      storyId: request.storyId,
-      environment: request.environment,
-      status: "success",
-      message: `Deployment of ${request.storyId} to ${request.environment} queued via Copado.`,
-    };
+    const operationId = createOperationId("DEP");
+
+    try {
+      execSync(`sf copado story set --story "${request.storyId}" 2>&1`, {
+        encoding: "utf8",
+        timeout: 30_000,
+        stdio: "pipe",
+      });
+    } catch { /* already bound — continue */ }
+
+    try {
+      const output = execSync("sf copado story submit --deploy --wait 2>&1", {
+        encoding: "utf8",
+        timeout: 120_000,
+        stdio: "pipe",
+      }).trim();
+
+      const succeeded = /success|complet|deploy/i.test(output);
+      return {
+        operationId,
+        operation: "deploy",
+        storyId: request.storyId,
+        environment: request.environment,
+        status: succeeded ? "success" : "queued",
+        message: output.slice(0, 300) || `Story ${request.storyId} submitted for deployment to ${request.environment}.`,
+      };
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return {
+        operationId,
+        operation: "deploy",
+        storyId: request.storyId,
+        environment: request.environment,
+        status: "failed",
+        message: `Deployment failed: ${msg.slice(0, 300)}`,
+      };
+    }
   }
 }
