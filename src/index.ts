@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import "dotenv/config";
 import { Command } from "commander";
 
 import { registerAICommands } from "./commands/ai.js";
@@ -8,6 +9,11 @@ import { runCommand } from "./commands/command-support.js";
 import { registerPipelineCommands } from "./commands/pipeline.js";
 import { registerStoryCommands } from "./commands/story.js";
 import { registerTestingCommands } from "./commands/testing.js";
+import {
+  registerDoctorCommands,
+  registerInvestigateCommand,
+  registerWhyCommand,
+} from "./doctor/doctor-commands.js";
 import { AIAgentService } from "./services/ai-agent-service.js";
 import { AuthService } from "./services/auth-service.js";
 import { PipelineService } from "./services/pipeline-service.js";
@@ -21,15 +27,15 @@ const contextStore = new ContextStore();
 
 const authService = new AuthService(configStore);
 const storyService = new StoryContextService(configStore, contextStore);
-const pipelineService = new PipelineService(configStore, contextStore);
-const testingService = new TestingService(configStore);
-const aiService = new AIAgentService(configStore, contextStore);
+const pipelineService = new PipelineService(contextStore);
+const testingService = new TestingService();
+const aiService = new AIAgentService(contextStore);
 
 const program = new Command();
 
 program
-  .name("copado-hx")
-  .description("Headless Copado DevOps CLI scaffold")
+  .name("trinetra")
+  .description("TrinetraOps — Headless Copado DevOps Platform")
   .version("0.1.0")
   .option("--json", "Emit machine-readable JSON output");
 
@@ -38,6 +44,9 @@ registerStoryCommands(program, storyService);
 registerPipelineCommands(program, pipelineService);
 registerTestingCommands(program, testingService);
 registerAICommands(program, aiService);
+registerDoctorCommands(program);
+registerInvestigateCommand(program);
+registerWhyCommand(program);
 
 program
   .command("status")
