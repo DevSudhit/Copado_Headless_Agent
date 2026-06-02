@@ -170,21 +170,22 @@ export class LiveCicdClient implements CicdClient {
     } catch { /* already bound — continue */ }
 
     try {
+      // No --wait: promotions run async. Submit fires the pipeline and returns immediately.
       const flag = request.validate ? "--validate" : "--promote";
-      const output = execSync(`sf copado story submit ${flag} --wait 2>&1`, {
+      const output = execSync(`sf copado story submit ${flag} 2>&1`, {
         encoding: "utf8",
-        timeout: 120_000,
+        timeout: 300_000,
         stdio: "pipe",
       }).trim();
 
-      const succeeded = /success|complet|promot/i.test(output);
+      const failed = /error|fail/i.test(output);
       return {
         operationId,
         operation: "promote",
         storyId: request.storyId,
         environment: request.environment,
-        status: succeeded ? "success" : "queued",
-        message: output.slice(0, 300) || `Story ${request.storyId} submitted for promotion to ${request.environment}.`,
+        status: failed ? "failed" : "queued",
+        message: output.slice(0, 300) || `Story ${request.storyId} submitted for promotion to ${request.environment}. Track progress in Copado UI → Promotions tab.`,
         validationRequested: request.validate,
       };
     } catch (err: unknown) {
@@ -213,20 +214,22 @@ export class LiveCicdClient implements CicdClient {
     } catch { /* already bound — continue */ }
 
     try {
-      const output = execSync("sf copado story submit --deploy --wait 2>&1", {
+      // No --wait: Copado deployments run async and can take several minutes.
+      // Submit fires the pipeline and returns immediately; Copado UI shows progress.
+      const output = execSync("sf copado story submit --deploy 2>&1", {
         encoding: "utf8",
-        timeout: 120_000,
+        timeout: 300_000,
         stdio: "pipe",
       }).trim();
 
-      const succeeded = /success|complet|deploy/i.test(output);
+      const failed = /error|fail/i.test(output);
       return {
         operationId,
         operation: "deploy",
         storyId: request.storyId,
         environment: request.environment,
-        status: succeeded ? "success" : "queued",
-        message: output.slice(0, 300) || `Story ${request.storyId} submitted for deployment to ${request.environment}.`,
+        status: failed ? "failed" : "queued",
+        message: output.slice(0, 300) || `Story ${request.storyId} submitted for deployment to ${request.environment}. Track progress in Copado UI → Promotions tab.`,
       };
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
