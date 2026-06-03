@@ -1,0 +1,348 @@
+{
+  "name": "copado-hx",
+  "displayName": "Copado DevOps",
+  "description": "Visual interface for Copado Headless Agent — manage stories, pipelines, tests, diagnostics, and AI agents from VS Code.",
+  "version": "0.1.0",
+  "publisher": "copado",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other",
+    "SCM Providers"
+  ],
+  "keywords": [
+    "copado",
+    "devops",
+    "salesforce",
+    "cicd",
+    "trinetra"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "copado-hx",
+          "title": "Copado DevOps",
+          "icon": "media/copado-sidebar.svg"
+        }
+      ]
+    },
+    "views": {
+      "copado-hx": [
+        {
+          "id": "copadoAuth",
+          "name": "Connection",
+          "visibility": "visible"
+        },
+        {
+          "id": "copadoStories",
+          "name": "Stories",
+          "visibility": "visible"
+        },
+        {
+          "id": "copadoPipeline",
+          "name": "Pipeline",
+          "visibility": "visible"
+        },
+        {
+          "id": "copadoTesting",
+          "name": "Testing",
+          "visibility": "collapsed"
+        },
+        {
+          "id": "copadoDoctor",
+          "name": "Doctor",
+          "visibility": "collapsed"
+        },
+        {
+          "id": "copadoAI",
+          "name": "AI Agents",
+          "visibility": "collapsed"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "copadoAuth",
+        "contents": "No Copado configuration found.\n[Initialize Copado HX](command:copado-hx.authLogin)\nRun `copado-hx auth login` to get started."
+      }
+    ],
+    "commands": [
+      {
+        "command": "copado-hx.authLogin",
+        "title": "Login",
+        "category": "Copado",
+        "icon": "$(plug)"
+      },
+      {
+        "command": "copado-hx.authLogout",
+        "title": "Logout",
+        "category": "Copado",
+        "icon": "$(debug-disconnect)"
+      },
+      {
+        "command": "copado-hx.authStatus",
+        "title": "Connection Status",
+        "category": "Copado",
+        "icon": "$(info)"
+      },
+      {
+        "command": "copado-hx.storyList",
+        "title": "List Stories",
+        "category": "Copado",
+        "icon": "$(list-unordered)"
+      },
+      {
+        "command": "copado-hx.storySet",
+        "title": "Set Active Story",
+        "category": "Copado",
+        "icon": "$(pinned)"
+      },
+      {
+        "command": "copado-hx.storyCurrent",
+        "title": "Show Active Story",
+        "category": "Copado",
+        "icon": "$(bookmark)"
+      },
+      {
+        "command": "copado-hx.storyShow",
+        "title": "Show Story Details",
+        "category": "Copado",
+        "icon": "$(open-preview)"
+      },
+      {
+        "command": "copado-hx.commit",
+        "title": "Commit",
+        "category": "Copado",
+        "icon": "$(check)"
+      },
+      {
+        "command": "copado-hx.promote",
+        "title": "Promote",
+        "category": "Copado",
+        "icon": "$(arrow-up)"
+      },
+      {
+        "command": "copado-hx.deploy",
+        "title": "Deploy",
+        "category": "Copado",
+        "icon": "$(rocket)"
+      },
+      {
+        "command": "copado-hx.testRun",
+        "title": "Run Test Suite",
+        "category": "Copado",
+        "icon": "$(beaker)"
+      },
+      {
+        "command": "copado-hx.testStatus",
+        "title": "Check Test Status",
+        "category": "Copado",
+        "icon": "$(sync)"
+      },
+      {
+        "command": "copado-hx.testResults",
+        "title": "View Test Results",
+        "category": "Copado",
+        "icon": "$(checklist)"
+      },
+      {
+        "command": "copado-hx.doctorInvestigate",
+        "title": "Investigate Issue",
+        "category": "Copado Doctor",
+        "icon": "$(search)"
+      },
+      {
+        "command": "copado-hx.doctorWhy",
+        "title": "Why Did This Fail?",
+        "category": "Copado Doctor",
+        "icon": "$(question)"
+      },
+      {
+        "command": "copado-hx.replay",
+        "title": "Replay Timeline",
+        "category": "Copado",
+        "icon": "$(history)"
+      },
+      {
+        "command": "copado-hx.aiAsk",
+        "title": "Ask AI Agent",
+        "category": "Copado AI",
+        "icon": "$(sparkle)"
+      },
+      {
+        "command": "copado-hx.refreshStories",
+        "title": "Refresh Stories",
+        "category": "Copado",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "copado-hx.refreshPipeline",
+        "title": "Refresh Pipeline",
+        "category": "Copado",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "copado-hx.refreshTesting",
+        "title": "Refresh Testing",
+        "category": "Copado",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "copado-hx.openTerminal",
+        "title": "Open Copado Terminal",
+        "category": "Copado",
+        "icon": "$(terminal)"
+      },
+      {
+        "command": "copado-hx.status",
+        "title": "Show Status Overview",
+        "category": "Copado",
+        "icon": "$(dashboard)"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "copado-hx.authLogin",
+          "when": "view == copadoAuth",
+          "group": "navigation"
+        },
+        {
+          "command": "copado-hx.refreshStories",
+          "when": "view == copadoStories",
+          "group": "navigation"
+        },
+        {
+          "command": "copado-hx.storySet",
+          "when": "view == copadoStories",
+          "group": "navigation"
+        },
+        {
+          "command": "copado-hx.refreshPipeline",
+          "when": "view == copadoPipeline",
+          "group": "navigation"
+        },
+        {
+          "command": "copado-hx.commit",
+          "when": "view == copadoPipeline",
+          "group": "navigation"
+        },
+        {
+          "command": "copado-hx.refreshTesting",
+          "when": "view == copadoTesting",
+          "group": "navigation"
+        },
+        {
+          "command": "copado-hx.testRun",
+          "when": "view == copadoTesting",
+          "group": "navigation"
+        },
+        {
+          "command": "copado-hx.doctorInvestigate",
+          "when": "view == copadoDoctor",
+          "group": "navigation"
+        },
+        {
+          "command": "copado-hx.aiAsk",
+          "when": "view == copadoAI",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "copado-hx.storySet",
+          "when": "view == copadoStories && viewItem == story",
+          "group": "inline"
+        },
+        {
+          "command": "copado-hx.storyShow",
+          "when": "view == copadoStories && viewItem == story",
+          "group": "inline"
+        },
+        {
+          "command": "copado-hx.promote",
+          "when": "view == copadoPipeline && viewItem == pipelineAction",
+          "group": "inline"
+        },
+        {
+          "command": "copado-hx.deploy",
+          "when": "view == copadoPipeline && viewItem == pipelineAction",
+          "group": "inline"
+        },
+        {
+          "command": "copado-hx.replay",
+          "when": "viewItem == story || viewItem == operation",
+          "group": "inline"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "copado-hx.refreshStories",
+          "when": "false"
+        },
+        {
+          "command": "copado-hx.refreshPipeline",
+          "when": "false"
+        },
+        {
+          "command": "copado-hx.refreshTesting",
+          "when": "false"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Copado DevOps",
+      "properties": {
+        "copado-hx.cliPath": {
+          "type": "string",
+          "default": "npx",
+          "description": "Path to the copado-hx CLI executable. Default 'npx' runs via 'npx tsx src/index.ts'. Set to 'copado-hx' if globally linked."
+        },
+        "copado-hx.autoRefreshInterval": {
+          "type": "number",
+          "default": 30,
+          "minimum": 5,
+          "description": "Auto-refresh interval in seconds for story and pipeline views."
+        },
+        "copado-hx.showStatusBar": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show Copado status bar item with active story."
+        },
+        "copado-hx.defaultEnvironments": {
+          "type": "array",
+          "default": [
+            "dev",
+            "integration",
+            "staging",
+            "uat",
+            "prod"
+          ],
+          "items": {
+            "type": "string"
+          },
+          "description": "Available environments for promote and deploy actions."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "lint": "eslint src --ext ts",
+    "package": "vsce package"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.41",
+    "@types/vscode": "^1.85.0",
+    "@vscode/vsce": "^2.22.0",
+    "typescript": "^5.3.0"
+  }
+}
