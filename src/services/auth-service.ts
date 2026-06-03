@@ -1,67 +1,43 @@
-import { ConfigStore } from "../state/config-store.js";
-import { TokenStore } from "../state/token-store.js";
+import { SalesforceClient } from "../clients/salesforce-client.js";
+import { readAiEnv, readCicdEnv, readCrtEnv } from "../clients/env-config.js";
 import { CliError } from "../types/commands.js";
-import { ProjectConfig, RuntimeMode } from "../types/api.js";
-
-export interface LoginOptions {
-  runtimeMode: RuntimeMode;
-  apiBaseUrl?: string;
-  tokenEnvVar?: string;
-}
 
 export interface AuthStatus {
   configured: boolean;
-  runtimeMode: RuntimeMode;
-  apiBaseUrl?: string;
-  tokenEnvVar?: string;
-  tokenPresent: boolean;
+  runtimeMode: string;
+  sfCliConnected: boolean;
+  sfOrgAlias: string;
+  aiConnected: boolean;
+  crtConnected: boolean;
+  cicdConnected: boolean;
 }
 
 export class AuthService {
-  private readonly tokenStore: TokenStore;
-
-  constructor(private readonly configStore = new ConfigStore()) {
-    this.tokenStore = new TokenStore(configStore);
-  }
-
-  async login(options: LoginOptions): Promise<AuthStatus> {
-    if (options.runtimeMode === "live" && !options.apiBaseUrl) {
-      throw new CliError("Live mode requires --base-url.", 2);
-    }
-
-    const currentConfig = await this.configStore.load();
-    const nextConfig: ProjectConfig = {
-      ...currentConfig,
-      runtimeMode: options.runtimeMode,
-      apiBaseUrl: options.apiBaseUrl,
-      tokenEnvVar: options.tokenEnvVar,
-    };
-
-    await this.configStore.save(nextConfig);
-    return this.status();
-  }
-
   async status(): Promise<AuthStatus> {
-    const config = await this.configStore.load();
-    const token = await this.tokenStore.getToken();
+    const sf = new SalesforceClient();
+    const sfConnected = sf.isAvailable();
+    const aiEnv = readAiEnv();
+    const crtEnv = readCrtEnv();
+    const cicdEnv = readCicdEnv();
+
+    const runtimeMode = sfConnected || aiEnv || crtEnv ? "live" : "mock";
 
     return {
-      configured: config.runtimeMode === "mock" || Boolean(config.apiBaseUrl),
-      runtimeMode: config.runtimeMode,
-      apiBaseUrl: config.apiBaseUrl,
-      tokenEnvVar: config.tokenEnvVar,
-      tokenPresent: Boolean(token),
+      configured: sfConnected || Boolean(aiEnv) || Boolean(crtEnv),
+      runtimeMode,
+      sfCliConnected: sfConnected,
+      sfOrgAlias: sfConnected ? "copadotrial" : "not connected",
+      aiConnected: Boolean(aiEnv),
+      crtConnected: Boolean(crtEnv),
+      cicdConnected: sfConnected,
     };
+  }
+
+  async login(): Promise<AuthStatus> {
+    return this.status();
   }
 
   async logout(): Promise<AuthStatus> {
-    const currentConfig = await this.configStore.load();
-
-    await this.configStore.save({
-      runtimeMode: "mock",
-      defaultOutput: currentConfig.defaultOutput,
-    });
-
-    return this.status();
+    throw new CliError("To disconnect, run: sf org logout --target-org copadotrial", 2);
   }
 }

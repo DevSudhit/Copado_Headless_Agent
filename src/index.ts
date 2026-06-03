@@ -26,7 +26,7 @@ import { ContextStore } from "./state/context-store.js";
 const configStore = new ConfigStore();
 const contextStore = new ContextStore();
 
-const authService = new AuthService(configStore);
+const authService = new AuthService();
 const storyService = new StoryContextService(configStore, contextStore);
 const pipelineService = new PipelineService(contextStore);
 const testingService = new TestingService();
@@ -55,22 +55,20 @@ program
   .description("Show the current runtime configuration and story context")
   .action(async (_options: Record<string, never>, command: Command) => {
     await runCommand(command, async () => {
-      const config = await configStore.load();
+      const authStatus = await authService.status();
       const context = await contextStore.load();
 
       return {
         summary: [
-          `Runtime mode: ${config.runtimeMode}`,
-          `Base URL: ${config.apiBaseUrl ?? "not set"}`,
-          `Token env: ${config.tokenEnvVar ?? "not set"}`,
-          `Active story: ${context.currentStoryId ?? "not set"}`,
-          `Last promotion env: ${context.lastPromotionEnvironment ?? "not set"}`,
-          `Last deployment env: ${context.lastDeploymentEnvironment ?? "not set"}`,
+          `Runtime mode:     ${authStatus.runtimeMode.toUpperCase()}`,
+          `Salesforce CLI:   ${authStatus.sfCliConnected ? `connected (${authStatus.sfOrgAlias})` : "not connected"}`,
+          `Copado AI:        ${authStatus.aiConnected ? "connected" : "not connected"}`,
+          `Copado CRT:       ${authStatus.crtConnected ? "connected" : "not connected"}`,
+          `Active story:     ${context.currentStoryId ?? "not set"}`,
+          `Last promotion:   ${context.lastPromotionEnvironment ?? "not set"}`,
+          `Last deployment:  ${context.lastDeploymentEnvironment ?? "not set"}`,
         ].join("\n"),
-        data: {
-          config,
-          context,
-        },
+        data: { authStatus, context },
       };
     });
   });

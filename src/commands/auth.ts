@@ -1,39 +1,20 @@
-import { Command, InvalidArgumentError } from "commander";
+import { Command } from "commander";
 
 import { AuthService } from "../services/auth-service.js";
-import { RuntimeMode } from "../types/api.js";
 
 import { runCommand } from "./command-support.js";
-
-interface AuthLoginOptions {
-  mode: RuntimeMode;
-  baseUrl?: string;
-  tokenEnv?: string;
-}
 
 export function registerAuthCommands(program: Command, authService: AuthService): void {
   const auth = program.command("auth").description("Configure Copado runtime mode and connection settings");
 
   auth
     .command("login")
-    .description("Configure mock or live runtime settings")
-    .option("--mode <mode>", "Runtime mode to use: mock or live", parseRuntimeMode, "mock")
-    .option("--base-url <url>", "Copado API base URL for live mode")
-    .option("--token-env <name>", "Environment variable that contains the Copado access token")
-    .action(async (options: AuthLoginOptions, command: Command) => {
+    .description("Show live connection status (connections are auto-detected)")
+    .action(async (_options: Record<string, never>, command: Command) => {
       await runCommand(command, async () => {
-        const status = await authService.login({
-          runtimeMode: options.mode,
-          apiBaseUrl: options.baseUrl,
-          tokenEnvVar: options.tokenEnv,
-        });
-
-        const summary = status.runtimeMode === "mock"
-          ? "Configured copado-hx for mock mode. Commands will use local mock clients until live Copado APIs are wired."
-          : `Configured live mode for ${status.apiBaseUrl}. Token source: ${status.tokenEnvVar ?? "not set"}.`;
-
+        const status = await authService.status();
         return {
-          summary,
+          summary: buildStatusSummary(status),
           data: status,
         };
       });
@@ -41,19 +22,12 @@ export function registerAuthCommands(program: Command, authService: AuthService)
 
   auth
     .command("status")
-    .description("Show current runtime mode and token availability")
+    .description("Show current runtime mode and connection status")
     .action(async (_options: Record<string, never>, command: Command) => {
       await runCommand(command, async () => {
         const status = await authService.status();
-
         return {
-          summary: [
-            `Runtime mode: ${status.runtimeMode}`,
-            `Configured: ${status.configured ? "yes" : "no"}`,
-            `Base URL: ${status.apiBaseUrl ?? "not set"}`,
-            `Token env: ${status.tokenEnvVar ?? "not set"}`,
-            `Token present in shell: ${status.tokenPresent ? "yes" : "no"}`,
-          ].join("\n"),
+          summary: buildStatusSummary(status),
           data: status,
         };
       });
@@ -61,22 +35,25 @@ export function registerAuthCommands(program: Command, authService: AuthService)
 
   auth
     .command("logout")
-    .description("Clear live connection settings and reset to mock mode")
+    .description("Log out of the connected Salesforce org")
     .action(async (_options: Record<string, never>, command: Command) => {
       await runCommand(command, async () => {
-        const status = await authService.logout();
+        await authService.logout();
         return {
-          summary: "Cleared live connection settings and reset the CLI to mock mode.",
-          data: status,
+          summary: "",
+          data: {},
         };
       });
     });
 }
 
-function parseRuntimeMode(value: string): RuntimeMode {
-  if (value === "mock" || value === "live") {
-    return value;
-  }
-
-  throw new InvalidArgumentError("Runtime mode must be either mock or live.");
+function buildStatusSummary(status: Awaited<ReturnType<AuthService["status"]>>): string {
+  return [
+    `Runtime mode:     ${status.runtimeMode.toUpperCase()}`,
+    `Configured:       ${status.configured ? "yes" : "no"}`,
+    `Salesforce CLI:   ${status.sfCliConnected ? `connected (${status.sfOrgAlias})` : "not connected"}`,
+    `Copado AI:        ${status.aiConnected ? "connected" : "not connected — set COPADO_AI_TOKEN"}`,
+    `Copado CRT:       ${status.crtConnected ? "connected" : "not connected — set COPADO_CRT_TOKEN"}`,
+    `CI/CD (sf CLI):   ${status.cicdConnected ? "connected" : "not connected"}`,
+  ].join("\n");
 }
